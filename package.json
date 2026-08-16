@@ -1,0 +1,34 @@
+{
+  "name": "ai-powered-appointment-scheduler-assistant",
+  "version": "1.0.0",
+  "description": "OCR to enitity recog to normalization",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sanjeevkrishna2114/AI-powered-Appointment-Scheduler-Assistant.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sanjeevkrishna2114/AI-powered-Appointment-Scheduler-Assistant/issues"
+  },
+  "homepage": "https://github.com/sanjeevkrishna2114/AI-powered-Appointment-Scheduler-Assistant#readme",
+  "dependencies": {
+    "@google/genai": "^2.17.1",
+    "@types/luxon": "^3.7.4",
+    "@types/node": "^26.2.0",
+    "chrono-node": "^2.10.1",
+    "dotenv": "^17.4.2",
+    "luxon": "^3.7.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^7.0.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.12"
+  }
+}
