@@ -33,6 +33,9 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
     console.log(`[OCR] Engine: ${engineUsed}, Escalated: ${escalated}, Conf: ${ocrConfidence.toFixed(2)}`);
   }
 
+  console.log("\n--- Step 1 - OCR/Text Extraction ---");
+  console.log(JSON.stringify({ raw_text: rawText, confidence: ocrConfidence }, null, 2));
+
   // G1 — empty/unreadable input
   if (!rawText.trim()) {
     return { status: "needs_clarification", message: "Could not read any text from the input", gate: "G1" };
@@ -51,6 +54,9 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
   // ── Step 2: Entity Extraction ──────────────────────────────────────────
   const { entities, entities_confidence } = await extractEntities(rawText);
 
+  console.log("\n--- Step 2 - Entity Extraction ---");
+  console.log(JSON.stringify({ entities, entities_confidence }, null, 2));
+
   // G3 — missing both date and time
   if (!entities.date_phrase && !entities.time_phrase) {
     return {
@@ -68,6 +74,12 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
   // ── Step 3: Normalization ──────────────────────────────────────────────
   const normalized = normalizeDateTime(entities.date_phrase, entities.time_phrase, referenceDate);
   const department = normalizeDepartment(entities.department);
+
+  console.log("\n--- Step 3 - Normalization ---");
+  console.log(JSON.stringify({
+    normalized: { date: normalized.date, time: normalized.time, tz: normalized.tz },
+    normalization_confidence: normalized.confidence
+  }, null, 2));
 
   // G5 — multiple conflicting date/time phrases
   if (normalized.issues.some(i => i.includes("multiple conflicting"))) {
@@ -142,10 +154,13 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
   // G10 — composite confidence below final threshold, even if every
   // individual gate above already passed. Final safety net.
   if (composite < THRESHOLDS.FINAL_MIN) {
-    return { status: "needs_clarification", message: "Ambiguous date/time or department", gate: "G10" };
+    const errorRes = { status: "needs_clarification", message: "Ambiguous date/time or department", gate: "G10" };
+    console.log("\n--- Guardrail / Exit Condition ---");
+    console.log(JSON.stringify({ status: errorRes.status, message: errorRes.message }, null, 2));
+    return errorRes as PipelineResult;
   }
 
-  return {
+  const finalRes = {
     status: "ok",
     appointment: {
       department: department.value,
@@ -154,4 +169,9 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
       tz: normalized.tz,
     },
   };
+
+  console.log("\n--- Step 4 - Final Appointment JSON ---");
+  console.log(JSON.stringify(finalRes, null, 2));
+
+  return finalRes as PipelineResult;
 }
