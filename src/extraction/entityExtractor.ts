@@ -34,6 +34,8 @@ CRITICAL RULES:
 - Return \`null\` for any field not explicitly stated. NEVER infer or guess a value that isn't in the text.
 - Extract the RAW PHRASE exactly as it appears in the text (e.g., if they say "next Friday", return "next Friday", NOT an ISO date).
 - Provide a \`self_reported_confidence\` score from 0.0 to 1.0. Give a high score (0.9-1.0) if the entities are clearly stated. Give a low score (< 0.5) if the text is ambiguous, garbled, or completely unrelated.
+- IGNORE EMAIL NOISE: Explicitly ignore email headers (To, From, Subject, Date, Cc), UI labels ("Reply", "Forward"), signatures, disclaimers, and phone numbers. Do not extract dates or times from these areas.
+- PRIORITIZE ACTIVE THREAD: If the text contains a quoted reply history (e.g., "On [Date], X wrote:" or ">"), prefer the most recent/primary message body at the top. Extract the current, active appointment request, not an older one visible in the history, unless the primary message body does not contain a request.
 - Example 1: "Book dentist next Friday at 3pm" -> { date_phrase: "next Friday", time_phrase: "3pm", department: "dentist", self_reported_confidence: 0.95 }
 - Example 2: "book dentist" -> { date_phrase: null, time_phrase: null, department: "dentist", self_reported_confidence: 0.8 }
 `;

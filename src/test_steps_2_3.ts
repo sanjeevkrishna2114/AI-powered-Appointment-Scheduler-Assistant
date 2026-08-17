@@ -29,7 +29,13 @@ const testCases = [
   "Book dentist for October 20th at 3", // Should trigger heuristic or ambiguity
   
   // Past date
-  "Book dentist for yesterday at 3pm" // Should flag as past date
+  "Book dentist for yesterday at 3pm", // Should flag as past date
+
+  // Email noise (Signatures & Headers)
+  "From: John\nTo: Clinic\nSubject: Booking\n\nI'd like to book the dentist next Friday at 3pm.\n\n--\nJohn Doe\nVP of Sales\nCall me: 555-0199",
+
+  // Email noise (Quoted History)
+  "Actually, next Tuesday at 4pm works better for me.\n\nOn Friday, Aug 12, Clinic wrote:\n> We have you down for Monday at 9am, please confirm."
 ];
 
 async function runTests() {
