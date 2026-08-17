@@ -1,5 +1,133 @@
 # AI-powered-Appointment-Scheduler-Assistant
 OCR to enitity recog to normalization
 
+## Getting Started
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Start the API server:
+```bash
+npm run dev
+```
+The server will start at `http://localhost:3000`.
+
+## API Documentation
+
+The backend exposes a single endpoint that dynamically handles both JSON text payloads and multipart image uploads.
+
+**Endpoint:** `POST /api/appointment`
+
+### 1. Text Request (JSON)
+If you want to test the natural language processing without an image, you can send a JSON payload.
+
+#### Using cURL
+```bash
+curl -X POST http://localhost:3000/api/appointment \
+  -H "Content-Type: application/json" \
+  -d '{"type":"text","payload":"Book dentist tomorrow at 3pm"}'
+```
+
+#### Using Postman
+1. Method: `POST`, URL: `http://localhost:3000/api/appointment`
+2. Go to **Body** -> select **raw** -> select **JSON**.
+3. Paste the following:
+```json
+{
+  "type": "text",
+  "payload": "Book dentist tomorrow at 3pm"
+}
+```
+
+### 2. Image Upload Request (Multipart)
+The repository contains a `test_images/` folder with a comprehensive suite of sample images covering various edge cases.
+
+Here is the exhaustive list of `curl.exe` commands (for Windows PowerShell) and standard `curl` commands (for Mac/Linux/Bash) to test each specific scenario. 
+
+**Note for Windows Users:** If you are using PowerShell, you MUST use `curl.exe` instead of just `curl`, because `curl` is an alias for a different command in PowerShell.
+
+#### 1. Rotated Image (90 Degrees)
+Tests the auto-rotation brute-force fallback.
+```powershell
+curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\90_rot.jpg"
+```
+
+#### 2. Heavily Blurred Image
+Tests the safety guardrail. Should safely reject with a `needs_clarification` status.
+```powershell
+curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\blur.jpg"
+```
+
+#### 3. Clean Screenshot
+Tests the baseline happy path.
+```powershell
+curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\perf.jpg"
+```
+
+#### 4. Email Screenshot (Clean)
+Tests the pipeline's ability to extract data from a standard email UI.
+```powershell
+curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\email_clean.png"
+```
+
+#### 5. Email Thread Screenshot (Conflicting Info)
+Tests the pipeline's ability to handle an email thread where a follow-up message changes the time ("sorry my bad change it to 4pm").
+```powershell
+curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\email_thread.png"
+```
+
+#### 6. Angled Photos (Perspective Distortion)
+Tests the pipeline's robustness against camera angles.
+```powershell
+curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\angled.jpg"
+curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\ang_lef.jpg"
+```
+
+#### 7. Handwritten Note
+Tests the pipeline on handwritten text.
+```powershell
+curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\processed_handwriting.png"
+```
+
+#### 8. Dark & Light Theme Polarity
+Tests the OCR engine's ability to handle inverted contrast (white-on-black vs black-on-white text).
+```powershell
+curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\dark_theme.png"
+curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\light_theme.png"
+```
+
+*(Mac/Linux users: Simply replace `curl.exe` with `curl` and `\` with `/` in the paths above).*
+
+#### Using Postman
+1. Method: `POST`, URL: `http://localhost:3000/api/appointment`
+2. Go to **Body** -> select **form-data**.
+3. Add a new key named `image`.
+4. Hover over the key type (usually says "Text") and change it to **File**.
+5. Under the Value column, click "Select Files" and pick one of the sample images (e.g. `90_rot.jpg`) from your local `test_images/` repository folder.
+6. Hit Send!
+
+## Expected Response
+A successful extraction will return:
+```json
+{
+  "status": "ok",
+  "appointment": {
+    "department": "Dentistry",
+    "date": "2026-08-18",
+    "time": "15:00",
+    "tz": "Asia/Kolkata"
+  }
+}
+```
+If the image is too blurry (like `blur.jpg`), the pipeline will safely trigger a guardrail and return:
+```json
+{
+  "status": "needs_clarification",
+  "message": "Input text could not be read clearly — please retype or resend a clearer image"
+}
+```
+
 ## Known Limitations & Best Practices
 - **Multi-Column Screenshots:** The pipeline assumes screenshots primarily contain single-column message content. Screenshots that include wide inbox sidebars or navigation panes alongside the reading pane may produce interleaved, garbled text due to raster-order OCR constraints. For best results, crop screenshots specifically to the message body.
