@@ -8,6 +8,11 @@ The API is fully deployed to a Google Cloud Run serverless instance. You can tes
 
 **Base URL:** `https://appointment-api-916144154652.asia-south1.run.app`
 
+**Example Command (Live Cloud):**
+```powershell
+curl.exe -X POST https://appointment-api-916144154652.asia-south1.run.app/api/appointment -F "image=@test_images\perf.jpg"
+```
+
 ### Running Locally
 If you prefer to run the code locally, ensure you have the `GEMINI_API_KEY` set in your `.env` file, then run:
 
@@ -35,7 +40,13 @@ If you want to test the natural language processing without an image, you can se
 
 #### Using cURL
 ```bash
+# Local
 curl -X POST http://localhost:3000/api/appointment \
+  -H "Content-Type: application/json" \
+  -d '{"type":"text","payload":"Book dentist tomorrow at 3pm"}'
+
+# Cloud
+curl -X POST https://appointment-api-916144154652.asia-south1.run.app/api/appointment \
   -H "Content-Type: application/json" \
   -d '{"type":"text","payload":"Book dentist tomorrow at 3pm"}'
 ```
@@ -61,51 +72,85 @@ Here is the exhaustive list of `curl.exe` commands (for Windows PowerShell) and 
 #### 1. Rotated Image (90 Degrees)
 Tests the auto-rotation brute-force fallback.
 ```powershell
+# Local
 curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\90_rot.jpg"
+
+# Cloud
+curl.exe -X POST https://appointment-api-916144154652.asia-south1.run.app/api/appointment -F "image=@test_images\90_rot.jpg"
 ```
 
 #### 2. Heavily Blurred Image
 Tests the safety guardrail. Should safely reject with a `needs_clarification` status.
 ```powershell
+# Local
 curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\blur.jpg"
+
+# Cloud
+curl.exe -X POST https://appointment-api-916144154652.asia-south1.run.app/api/appointment -F "image=@test_images\blur.jpg"
 ```
 
 #### 3. Clean Screenshot
 Tests the baseline happy path.
 ```powershell
+# Local
 curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\perf.jpg"
+
+# Cloud
+curl.exe -X POST https://appointment-api-916144154652.asia-south1.run.app/api/appointment -F "image=@test_images\perf.jpg"
 ```
 
 #### 4. Email Screenshot (Clean)
 Tests the pipeline's ability to extract data from a standard email UI.
 ```powershell
+# Local
 curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\email_clean.png"
+
+# Cloud
+curl.exe -X POST https://appointment-api-916144154652.asia-south1.run.app/api/appointment -F "image=@test_images\email_clean.png"
 ```
 
 #### 5. Email Thread Screenshot (Conflicting Info)
 Tests the pipeline's ability to handle an email thread where a follow-up message changes the time ("sorry my bad change it to 4pm").
 ```powershell
+# Local
 curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\email_thread.png"
+
+# Cloud
+curl.exe -X POST https://appointment-api-916144154652.asia-south1.run.app/api/appointment -F "image=@test_images\email_thread.png"
 ```
 
 #### 6. Angled Photos (Perspective Distortion)
 Tests the pipeline's robustness against camera angles.
 ```powershell
+# Local
 curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\angled.jpg"
 curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\ang_lef.jpg"
+
+# Cloud
+curl.exe -X POST https://appointment-api-916144154652.asia-south1.run.app/api/appointment -F "image=@test_images\angled.jpg"
+curl.exe -X POST https://appointment-api-916144154652.asia-south1.run.app/api/appointment -F "image=@test_images\ang_lef.jpg"
 ```
 
 #### 7. Handwritten Note
 Tests the pipeline on handwritten text.
 ```powershell
+# Local
 curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\processed_handwriting.png"
+
+# Cloud
+curl.exe -X POST https://appointment-api-916144154652.asia-south1.run.app/api/appointment -F "image=@test_images\processed_handwriting.png"
 ```
 
 #### 8. Dark & Light Theme Polarity
 Tests the OCR engine's ability to handle inverted contrast (white-on-black vs black-on-white text).
 ```powershell
+# Local
 curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\dark_theme.png"
 curl.exe -X POST http://localhost:3000/api/appointment -F "image=@test_images\light_theme.png"
+
+# Cloud
+curl.exe -X POST https://appointment-api-916144154652.asia-south1.run.app/api/appointment -F "image=@test_images\dark_theme.png"
+curl.exe -X POST https://appointment-api-916144154652.asia-south1.run.app/api/appointment -F "image=@test_images\light_theme.png"
 ```
 
 *(Mac/Linux users: Simply replace `curl.exe` with `curl` and `\` with `/` in the paths above).*
