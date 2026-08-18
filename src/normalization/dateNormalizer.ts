@@ -73,8 +73,22 @@ export function normalizeDateTime(
   // output, since forwardDate makes chrono blind to this specific case.
   const referencesPast = PAST_TENSE_MARKERS.test(datePhrase ?? "");
 
+  // ── Fix: Timezone Parsing Independence ────────────────────────────────
+  // Convert referenceDate to Kolkata time, then construct a naive JS Date
+  // using those exact local values. This forces chrono to compute relative
+  // offsets ("tomorrow") against Kolkata's actual current wall-clock date.
+  const nowKolkata = DateTime.fromJSDate(referenceDate).setZone(TIMEZONE);
+  const chronoRefDate = new Date(
+    nowKolkata.year,
+    nowKolkata.month - 1,
+    nowKolkata.day,
+    nowKolkata.hour,
+    nowKolkata.minute,
+    nowKolkata.second
+  );
+
   // ── Parse with chrono ───────────────────────────────────────────────────
-  const results = chrono.parse(combined, referenceDate, { forwardDate: true });
+  const results = chrono.parse(combined, chronoRefDate, { forwardDate: true });
 
   if (results.length === 0) {
     return {
@@ -92,8 +106,17 @@ export function normalizeDateTime(
   }
 
   const primary = results[0];
-  const parsedJsDate = primary.start.date();
-  let dt = DateTime.fromJSDate(parsedJsDate).setZone(TIMEZONE);
+  
+  // Extract raw parsed fields and explicitly construct a Kolkata DateTime
+  // bypassing JS Date's implicit timezone offset entirely.
+  let dt = DateTime.fromObject({
+    year: primary.start.get("year") ?? undefined,
+    month: primary.start.get("month") ?? undefined,
+    day: primary.start.get("day") ?? undefined,
+    hour: primary.start.get("hour") ?? 0,
+    minute: primary.start.get("minute") ?? 0,
+    second: primary.start.get("second") ?? 0,
+  }, { zone: TIMEZONE });
 
   // ── Apply the independent past-tense override ──────────────────────────
   // If the phrase explicitly says "last Friday" etc., trust that over

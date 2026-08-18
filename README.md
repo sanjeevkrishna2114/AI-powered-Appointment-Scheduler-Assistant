@@ -3,7 +3,7 @@ OCR to enitity recog to normalization
 
 ## How to Test
 
-### Live Cloud Deployment 🚀
+### Live Cloud Deployment
 The API is fully deployed to a Google Cloud Run serverless instance. You can test it immediately without running the code locally by replacing `http://localhost:3000` with the live URL in any of the test commands below:
 
 **Base URL:** `https://appointment-api-916144154652.asia-south1.run.app`
@@ -29,6 +29,42 @@ The system uses a 4-step pipeline with deterministic confidence scoring and stri
 2. **Entity Extraction:** Uses Gemini 3.1 Flash Lite (`@google/genai`) to extract date, time, and department phrases. It relies on a "3-Signal Mathematical Formula" for confidence: Completeness (50%), Regex Agreement (30%), and LLM Self-Report (20%).
 3. **Normalization:** Uses `chrono-node` to parse extracted time phrases into ISO format. Resolves ambiguities (like `next Friday at 3` vs `3pm`) and enforces the `Asia/Kolkata` timezone. Uses a dictionary map for department normalization.
 4. **Final Aggregation:** Combines all confidence scores. If the overall confidence falls below `0.70`, the system aborts and returns a safe `needs_clarification` response instead of a hallucinated appointment.
+
+## Confidence Mathematics
+
+The pipeline computes three isolated confidence scores that determine whether the request proceeds or triggers a safety guardrail.
+
+### 1. OCR Confidence ($C_{ocr}$)
+For images, Tesseract calculates a confidence score $c_i \in [0, 1]$ for each recognized word. The overall OCR confidence is the mean across $N$ words:
+$$C_{ocr} = \frac{1}{N} \sum_{i=1}^{N} c_i$$
+*(For pure JSON text payloads, $C_{ocr}$ is hardcoded to $1.0$)*
+
+### 2. Entity Extraction Confidence ($C_{ext}$)
+Calculated dynamically by the LLM and penalized mathematically based on input length $L$ (to punish noise like email threads).
+$$C_{ext} = \max(0,\ C_{LLM} - P(L))$$
+Where $P(L) = 0.1$ if $L > 100$ characters, else $0$.
+
+### 3. Normalization Confidence ($C_{norm}$)
+Calculated deterministically by the Chrono parsing engine. Base confidence is $1.0$, penalized by specific parse ambiguities:
+$$C_{norm} = \max(0,\ 1.0 - \sum \text{Penalties})$$
+*Penalties:* Multiple conflicting dates ($-0.3$), Resolved to past ($-0.3$), Missing time component ($-0.4$), Unresolvable AM/PM ambiguity ($-0.5$).
+
+---
+
+## The 10 Safety Guardrails
+The system implements 10 rigid `needs_clarification` gates to prevent AI hallucinations. If any gate triggers, execution halts immediately.
+
+1. **G1 (Blank Input):** Fired if the OCR engine or payload returns empty text.
+2. **G2 (Low OCR Confidence):** Fired if $C_{ocr} < 0.75$. Auto-rotation fallback loops run first; if all 4 angles fail, this triggers.
+3. **G3 (Missing Date & Time):** Fired if the LLM cannot extract *both* a date phrase and a time phrase.
+4. **G4 (Missing Department):** Fired if the LLM cannot extract a target medical department.
+5. **G5 (Low Extraction Confidence):** Fired if $C_{ext} < 0.60$. Prevents hallucinations on heavily corrupted text.
+6. **G6 (Parse Failure):** Fired if `chrono-node` fundamentally cannot map the extracted phrase to a timestamp.
+7. **G7 (Missing Normalized Date):** Fired if chrono extracts a time but cannot anchor a precise calendar date.
+8. **G8 (Missing Normalized Time):** Fired if chrono extracts a date but cannot determine an exact hour/minute.
+9. **G9 (AM/PM Ambiguity):** Fired if the user provides a bare hour (e.g., "at 11") and it falls in an ambiguous band where the clinic cannot safely assume AM or PM.
+10. **G10 (Unmapped Department):** Fired if the requested department does not map to a supported internal clinic ID (e.g., "cardiology").
+
 ## API Documentation
 
 The backend exposes a single endpoint that dynamically handles both JSON text payloads and multipart image uploads.
@@ -38,17 +74,13 @@ The backend exposes a single endpoint that dynamically handles both JSON text pa
 ### 1. Text Request (JSON)
 If you want to test the natural language processing without an image, you can send a JSON payload.
 
-#### Using cURL
-```bash
+#### Using cURL (Windows PowerShell)
+```powershell
 # Local
-curl -X POST http://localhost:3000/api/appointment \
-  -H "Content-Type: application/json" \
-  -d '{"type":"text","payload":"Book dentist tomorrow at 3pm"}'
+cmd /c 'curl.exe -X POST http://localhost:3000/api/appointment -H "Content-Type: application/json" -d "{\"type\":\"text\",\"payload\":\"Book dentist tomorrow at 3pm\"}"'
 
 # Cloud
-curl -X POST https://appointment-api-916144154652.asia-south1.run.app/api/appointment \
-  -H "Content-Type: application/json" \
-  -d '{"type":"text","payload":"Book dentist tomorrow at 3pm"}'
+cmd /c 'curl.exe -X POST https://appointment-api-916144154652.asia-south1.run.app/api/appointment -H "Content-Type: application/json" -d "{\"type\":\"text\",\"payload\":\"Book dentist tomorrow at 3pm\"}"'
 ```
 
 #### Using Postman
