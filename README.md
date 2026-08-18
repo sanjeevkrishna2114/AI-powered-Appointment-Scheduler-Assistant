@@ -25,10 +25,33 @@ The local server will start on `http://localhost:3000`.
 ## Architecture
 The system uses a 4-step pipeline with deterministic confidence scoring and strict guardrails.
 
-1. **OCR / Text Extraction:** Uses `tesseract.js` for initial extraction. For images, if the baseline confidence is `< 0.75`, it performs a brute-force auto-rotation (0, 90, 180, 270 degrees) using `sharp` to find the clearest orientation.
-2. **Entity Extraction:** Uses Gemini 3.1 Flash Lite (`@google/genai`) to extract date, time, and department phrases. It relies on a "3-Signal Mathematical Formula" for confidence: Completeness (50%), Regex Agreement (30%), and LLM Self-Report (20%).
-3. **Normalization:** Uses `chrono-node` to parse extracted time phrases into ISO format. Resolves ambiguities (like `next Friday at 3` vs `3pm`) and enforces the `Asia/Kolkata` timezone. Uses a dictionary map for department normalization.
-4. **Final Aggregation:** Combines all confidence scores. If the overall confidence falls below `0.70`, the system aborts and returns a safe `needs_clarification` response instead of a hallucinated appointment.
+```mermaid
+graph TD
+    A[Incoming Request] --> B{Payload Type}
+    B -- Image --> C["Step 1: OCR Extraction (tesseract.js)"]
+    C --> D{"Baseline Conf < 0.75?"}
+    D -- Yes --> E["Auto-Rotate Fallback (sharp)"]
+    E --> C
+    D -- No --> F["Step 2: Entity Extraction (Gemini 3.1)"]
+    B -- Text --> F
+    
+    F --> G["3-Signal Confidence Score <br/> Completeness / Regex / LLM"]
+    G --> H["Step 3: Normalization"]
+    
+    H --> I["chrono-node <br/> ISO Parse & Timezone"]
+    I --> J["Department Dictionary Map"]
+    
+    J --> K["Step 4: Final Aggregation"]
+    K --> L{"Combined Conf >= 0.70?"}
+    L -- No --> M["Abort: needs_clarification"]
+    L -- Yes --> N["Success: Appointment Booked"]
+```
+
+### Pipeline Details
+1. **OCR / Text Extraction:** Uses `tesseract.js` for initial extraction. Performs brute-force auto-rotation if baseline confidence is low.
+2. **Entity Extraction:** Uses Gemini 3.1 Flash Lite to extract raw phrases. Relies on a "3-Signal Formula" (Completeness, Regex, LLM Self-Report).
+3. **Normalization:** Uses `chrono-node` to parse phrases into ISO format, resolving ambiguities and enforcing `Asia/Kolkata`.
+4. **Final Aggregation:** Validates all confidence scores against the strict `0.70` threshold to prevent hallucinations.
 
 ## Confidence Mathematics
 
