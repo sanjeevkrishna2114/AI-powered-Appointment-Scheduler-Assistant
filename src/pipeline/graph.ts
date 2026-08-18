@@ -9,8 +9,12 @@ export type PipelineInput =
   | { type: "image"; payload: Buffer; referenceDate?: Date };
 
 export type PipelineResult =
-  | { status: "ok"; appointment: { department: string; date: string; time: string; tz: string } }
-  | { status: "needs_clarification"; message: string; gate: string };
+  | { 
+      status: "ok"; 
+      appointment: { department: string; date: string; time: string; tz: string };
+      debug_steps?: any;
+    }
+  | { status: "needs_clarification"; message: string; gate: string; debug_steps?: any };
 
 export async function runPipeline(input: PipelineInput): Promise<PipelineResult> {
   const referenceDate = input.referenceDate ?? new Date();
@@ -168,6 +172,14 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
       time: normalized.time,
       tz: normalized.tz,
     },
+    debug_steps: {
+      step1_ocr: { raw_text: rawText, confidence: ocrConfidence },
+      step2_entities: { entities, entities_confidence },
+      step3_normalization: {
+        normalized: { date: normalized.date, time: normalized.time, tz: normalized.tz },
+        normalization_confidence: normalized.confidence
+      }
+    }
   };
 
   console.log("\n--- Step 4 - Final Appointment JSON ---");

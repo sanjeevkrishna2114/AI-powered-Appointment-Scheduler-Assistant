@@ -1,19 +1,29 @@
 # AI-powered-Appointment-Scheduler-Assistant
 OCR to enitity recog to normalization
 
-## Getting Started
+## How to Test
 
-1. Install dependencies:
+### Live Cloud Deployment 🚀
+The API is fully deployed to a Google Cloud Run serverless instance. You can test it immediately without running the code locally by replacing `http://localhost:3000` with the live URL in any of the test commands below:
+
+**Base URL:** `https://appointment-api-916144154652.asia-south1.run.app`
+
+### Running Locally
+If you prefer to run the code locally, ensure you have the `GEMINI_API_KEY` set in your `.env` file, then run:
+
 ```bash
 npm install
-```
-
-2. Start the API server:
-```bash
 npm run dev
 ```
-The server will start at `http://localhost:3000`.
+The local server will start on `http://localhost:3000`.
 
+## Architecture
+The system uses a 4-step pipeline with deterministic confidence scoring and strict guardrails.
+
+1. **OCR / Text Extraction:** Uses `tesseract.js` for initial extraction. For images, if the baseline confidence is `< 0.75`, it performs a brute-force auto-rotation (0, 90, 180, 270 degrees) using `sharp` to find the clearest orientation.
+2. **Entity Extraction:** Uses Gemini 3.1 Flash Lite (`@google/genai`) to extract date, time, and department phrases. It relies on a "3-Signal Mathematical Formula" for confidence: Completeness (50%), Regex Agreement (30%), and LLM Self-Report (20%).
+3. **Normalization:** Uses `chrono-node` to parse extracted time phrases into ISO format. Resolves ambiguities (like `next Friday at 3` vs `3pm`) and enforces the `Asia/Kolkata` timezone. Uses a dictionary map for department normalization.
+4. **Final Aggregation:** Combines all confidence scores. If the overall confidence falls below `0.70`, the system aborts and returns a safe `needs_clarification` response instead of a hallucinated appointment.
 ## API Documentation
 
 The backend exposes a single endpoint that dynamically handles both JSON text payloads and multipart image uploads.
